@@ -8,6 +8,25 @@ var mouseY = 0;
 var currentBoxDrag = 0;
 
 
+var globalScale = 1.0;
+var globalX = 0;
+var globalY = 0;
+
+function worldToScreenX(x) {
+  return globalScale*(x)+window.innerWidth*0.5+globalX;
+}
+function worldToScreenY(y) {
+  return globalScale*(y)+window.innerHeight*0.5+globalY;
+}
+
+function screenToWorldX(x) {
+  return (x-window.innerWidth*0.5-globalX)/globalScale;
+}
+
+function screenToWorldY(y) {
+  return (y-window.innerWidth*0.5-globalY)/globalScale;
+}
+
 class InputBox {
   constructor(id,defaultText="f(x)=") {
     console.log(id);
@@ -16,17 +35,21 @@ class InputBox {
     this.boxElement.id = id;
     this.boxElement.className = "mathBox";
     this.boxElement.innerHTML = "<math-field math-virtual-keyboard-policy='manual' id='"+"mathformula"+this.id+"' oncontextmenu='return false;'>"+defaultText+"</math-field>";
-    this.boxElement.style.left = event.pageX+"px";
-    this.boxElement.style.top= event.pageY+"px";
+    this.boxElement.style.scale = globalScale;
     this.boxElement.setAttribute("oncontextmenu","return false;");
     this.moves = true;
     document.body.appendChild(this.boxElement);
     let mf = document.getElementById("mathformula"+id);
     mf.menuItems = [];
     this.menuOption = this.box;
-    this.x = event.pageX;
-    this.y = event.pageY;
-
+    this.x = (event.pageX-0.5*window.innerWidth)/globalScale;
+    this.y = (event.pageY-0.5*window.innerHeight)/globalScale;
+    this.boxElement.style.left = worldToScreenX(this.x)+"px";
+    this.boxElement.style.top = worldToScreenY(this.y)+"px";
+  }
+  updatePagePosition() {
+    this.boxElement.style.left = worldToScreenX(this.x)+"px";
+    this.boxElement.style.top = worldToScreenY(this.y)+"px";
   }
 
   getPosition() {
@@ -35,16 +58,25 @@ class InputBox {
   setPosition(x,y) {
     this.x = x;
     this.y = y;
-    this.boxElement.style.left = x+"px";
-    this.boxElement.style.top = y+"px";
+    this.updatePagePosition();
   }
 
   move(x,y) {
     this.setPosition(x+this.x,y+this.y);
   }
-  
+
   remove() {
     this.boxElement.remove();
+  }
+  scale(s) {
+    this.boxElement.style.scale = s;
+  }
+}
+
+function scrollMathDivs() {
+  for (const key of boxMap.keys()) {
+    let box = boxMap.get(key);
+    box.scale(globalScale);
   }
 }
 
@@ -114,6 +146,25 @@ addEventListener("load", (event) => {
     }
   });
 
+  addEventListener("wheel", (event) => {
+    let sign = 1;
+        
+    let mx = event.clientX-0.5*window.innerWidth;
+    let my = event.clientY-0.5*window.innerHeight;
+
+    if (event.deltaY<0) {
+      globalScale *= 1.2;
+      globalX += (globalX-mx)*1.2-(globalX-mx);
+      globalY += (globalY-my)*1.2-(globalY-my);
+    }
+    if (event.deltaY>0) {
+      sign = -1;
+      globalScale /= 1.2;
+      globalX += (globalX-mx)*1/1.2-(globalX-mx);
+      globalY += (globalY-my)*1/1.2-(globalY-my);
+    }
+    scrollMathDivs();
+  });
 
   document.getElementById("canvas").addEventListener("contextmenu", e => {
     e.preventDefault();
@@ -148,11 +199,7 @@ addEventListener("load", (event) => {
       dragMouseDown(e);
     }
     else {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-
-      document.onmouseup = closeDragElement;
-      document.onmousemove = getHighlightBox;
+      dragViewPort(e);
     }
   });
 
@@ -163,8 +210,36 @@ addEventListener("load", (event) => {
 
   });
 
-  function getHighlightBox() {
 
+  
+  function dragViewPort(e) {
+    e = (e || window.event);
+    // get the mouse cursor position at startup:
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    document.onmouseup = closeDragViewPort;
+    // call a function whenever the cursor moves:
+    document.onmousemove = viewPortDrag;
+  }
+
+  function viewPortDrag(e) {
+    console.log("dragging", globalX);
+    e = e || window.event;
+    e.preventDefault();
+    // calculate the new cursor position:
+    pos1 = mouseX - e.clientX;
+    pos2 = mouseY - e.clientY;
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    globalX -= pos1;
+    globalY -= pos2;
+
+  }
+
+  function closeDragViewPort(e) {
+    document.onmouseup = null;
+    document.onmousemove = null;
+    currentBoxDrag = 0;
   }
 
   function dragMouseDown(e) {
@@ -198,7 +273,7 @@ addEventListener("load", (event) => {
     mouseX = e.clientX;
     mouseY = e.clientY;
     //console.log(currentBoxDrag.boxElement.offsetLeft - pos1,currentBoxDrag.boxElement.offsetTop - pos2);
-    currentBoxDrag.setPosition(currentBoxDrag.boxElement.offsetLeft - pos1,currentBoxDrag.boxElement.offsetTop - pos2);
+    currentBoxDrag.move(-pos1/globalScale,-pos2/globalScale);
   }
   console.log("page loaded");
 
@@ -246,6 +321,7 @@ function toggleMovement() {
 }
 function computeBoxMotion(deltaTime) {
   for (const key1 of boxMap.keys()) {
+    boxMap.get(key1).updatePagePosition();
     for (const key2 of boxMap.keys()) {
       if ((key1!==key2) & (key1!=currentBoxDrag.id) & (boxMap.get(key1).moves===true) & (boxMap.get(key2).moves===true)) {
         let a = boxMap.get(key1);
@@ -253,13 +329,17 @@ function computeBoxMotion(deltaTime) {
         
         let rx = a.x-b.x;
         let ry = a.y-b.y;
-        
+
         let dist = Math.sqrt(rx*rx+ry*ry);
-        let rxN = rx/dist;
-        let ryN = ry/dist;
-        let forceX = -0.0001*((100-dist)*(100-dist)*rxN)+(2/dist*dist)*rxN;
-        let forceY = -0.0001*((100-dist)*(100-dist)*ryN)+(2/dist*dist)*ryN;
-        a.move(forceX,forceY);
+        if (dist<500) {
+
+          
+          let rxN = rx/dist;
+          let ryN = ry/dist;
+          let forceX = -0.0001*((100-dist)*(100-dist)*rxN)+(2/dist*dist)*rxN;
+          let forceY = -0.0001*((100-dist)*(100-dist)*ryN)+(2/dist*dist)*ryN;
+          a.move(forceX,forceY);
+        }
       }
     }
   }
