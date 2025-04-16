@@ -88,7 +88,7 @@ addEventListener("load", (event) => {
     "<ul class='menu-options'></ul></div>"
   );
   canvasMenu.addMenuOption("Insert Math","addMathBox()");
-  canvasMenu.addMenuOption("Insert Text","addTextBox()");
+  //canvasMenu.addMenuOption("Insert Text","addTextBox()");
 
   boxMenu = new Menu(
     "boxmenu",
@@ -96,8 +96,8 @@ addEventListener("load", (event) => {
     "<ul class='menu-options'></ul></div>"
   );
   boxMenu.addMenuOption("Remove","deleteMathBox()");
-  boxMenu.addMenuOption("Derivative","createDerivative()");
-  boxMenu.addMenuOption("Integral","createIntegral()");
+  //boxMenu.addMenuOption("Derivative","createDerivative()");
+  //boxMenu.addMenuOption("Integral","createIntegral()");
   boxMenu.addMenuOption("Toggle movement","toggleMovement()");
 
   document.getElementById("canvas").addEventListener("click", e => {
