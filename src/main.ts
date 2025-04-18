@@ -1,49 +1,53 @@
 var nodeCount = 0;
 var currentBox = 0;
-var boxMap = new Map();
-var boxMenu = null;
-var canvasMenu = null;
+var boxMap = new Map<string,InputBox>;
+var boxMenu: SelectionMenu = null;
+var canvasMenu: SelectionMenu = null;
 var mouseX = 0;
 var mouseY = 0;
-var currentBoxDrag = 0;
-
-
+var currentBoxDrag: InputBox | null = null;
 var globalScale = 1.0;
 var globalX = 0;
 var globalY = 0;
 
-function worldToScreenX(x) {
-  return globalScale*(x)+window.innerWidth*0.5+globalX;
+function worldToScreenX(x: number) {
+    return globalScale * (x) + window.innerWidth * 0.5 + globalX;
 }
-function worldToScreenY(y) {
-  return globalScale*(y)+window.innerHeight*0.5+globalY;
+function worldToScreenY(y: number) {
+    return globalScale * (y) + window.innerHeight * 0.5 + globalY;
 }
-
-function screenToWorldX(x) {
-  return (x-window.innerWidth*0.5-globalX)/globalScale;
+function screenToWorldX(x: number) {
+    return (x - window.innerWidth * 0.5 - globalX) / globalScale;
 }
-
-function screenToWorldY(y) {
-  return (y-window.innerWidth*0.5-globalY)/globalScale;
+function screenToWorldY(y: number) {
+    return (y - window.innerWidth * 0.5 - globalY) / globalScale;
 }
 
 class InputBox {
-  constructor(id,defaultText="f(x)=") {
-    console.log(id);
+
+  id: string;
+  boxElement: HTMLElement;
+  moves: boolean;
+  x: number;
+  y: number;
+  
+
+  constructor(id: string) {
+    let defaultText: string = "f(x)=";
     this.id = id;
     this.boxElement = document.createElement("div");
     this.boxElement.id = id;
     this.boxElement.className = "mathBox";
     this.boxElement.innerHTML = "<math-field math-virtual-keyboard-policy='manual' id='"+"mathformula"+this.id+"' oncontextmenu='return false;'>"+defaultText+"</math-field>";
-    this.boxElement.style.scale = globalScale;
+    this.boxElement.style.scale = String(globalScale);
     this.boxElement.setAttribute("oncontextmenu","return false;");
     this.moves = true;
     document.body.appendChild(this.boxElement);
     let mf = document.getElementById("mathformula"+id);
     mf.menuItems = [];
-    this.menuOption = this.box;
-    this.x = (event.pageX-0.5*window.innerWidth)/globalScale;
-    this.y = (event.pageY-0.5*window.innerHeight)/globalScale;
+
+    this.x = (window.event as MouseEvent).clientX-0.5*window.innerWidth/globalScale;
+    this.y = (window.event as MouseEvent).clientY-0.5*window.innerHeight/globalScale;
     this.boxElement.style.left = worldToScreenX(this.x)+"px";
     this.boxElement.style.top = worldToScreenY(this.y)+"px";
   }
@@ -55,98 +59,99 @@ class InputBox {
   getPosition() {
     return [this.x,this.y];
   }
-  setPosition(x,y) {
+  setPosition(x:number,y: number) {
     this.x = x;
     this.y = y;
     this.updatePagePosition();
   }
 
-  move(x,y) {
+  move(x: number,y: number) {
     this.setPosition(x+this.x,y+this.y);
   }
 
   remove() {
     this.boxElement.remove();
   }
-  scale(s) {
-    this.boxElement.style.scale = s;
+  scale(s: number) {
+    this.boxElement.style.scale = String(s);
   }
 }
 
-function scrollMathDivs() {
-  for (const key of boxMap.keys()) {
-    let box = boxMap.get(key);
-    box.scale(globalScale);
-  }
-}
 
-class Menu {
-  constructor(id, styleClass,innerHTML) {
-    this.visible = false;
+
+class SelectionMenu {
+  visible: boolean = false;
+  menuElement: HTMLElement;
+  menuOption: HTMLElement;
+
+
+  constructor(id: string, styleClass: string,innerHTML: string) {
     this.menuElement = document.createElement("div");
     this.menuElement.className = styleClass;
     this.menuElement.id = id;
     this.menuElement.innerHTML = innerHTML;
     document.body.appendChild(this.menuElement);
     
-    this.menuOption = this.menuElement.childNodes[0];
+    this.menuOption = this.menuElement.childNodes[0] as HTMLElement;
 
     this.menuElement.addEventListener("mouseleave", e=> {
       this.toggleMenu("hide");
     });
   }
-  addMenuOption(text,action) {
-    this.menuElement.childNodes[0].innerHTML += "<li class='menu-option' onclick="+action+">"+text+"</li>";
+  addMenuOption(text: string,action: ()=>void) {
+    //(this.menuOption as HTMLElement).innerHTML += "<li class='menu-option'>"+text+"</li>";
+    let option = document.createElement("li");
+    option.className = "menu-option";
+    option.innerHTML = text;
+    option.onclick = action;
+    (this.menuOption as HTMLElement).appendChild(option);
   }
 
-  toggleMenu(command) {
+  toggleMenu(command: string) {
     this.menuElement.style.display = command === "show" ? "block" : "none";
     this.visible= !this.visible;
   };
 
-  setPosition({top,left}) {
-    this.menuElement.style.left = `${left-5}px`;
-    this.menuElement.style.top = `${top-5}px`;
+  setPosition(left: number,top: number) {
+    this.menuElement.style.left = String(left-5)+"px";
+    this.menuElement.style.top = String(top-5)+"px";
     this.toggleMenu("show");
   }
 
 }
 
 
+
 addEventListener("load", (event) => {
-  canvasMenu = new Menu(
+  canvasMenu = new SelectionMenu(
     "canvasmenu",
     "menu",
     "<ul class='menu-options'></ul></div>"
   );
-  canvasMenu.addMenuOption("Insert Math","addMathBox()");
-  //canvasMenu.addMenuOption("Insert Text","addTextBox()");
-
-  boxMenu = new Menu(
+  canvasMenu.addMenuOption("Insert Math",addMathBox);
+  boxMenu = new SelectionMenu(
     "boxmenu",
     "menu",
     "<ul class='menu-options'></ul></div>"
   );
-  boxMenu.addMenuOption("Remove","deleteMathBox()");
-  //boxMenu.addMenuOption("Derivative","createDerivative()");
-  //boxMenu.addMenuOption("Integral","createIntegral()");
-  boxMenu.addMenuOption("Toggle movement","toggleMovement()");
+  boxMenu.addMenuOption("Remove",deleteMathBox);
+  boxMenu.addMenuOption("Toggle movement",toggleMovement);
 
   document.getElementById("canvas").addEventListener("click", e => {
     if (!e.ctrlKey) {
-      if (e.target.matches("mathBox")) {
-        currentBox = e.target.id;
+      if ((e.target as HTMLElement).matches("mathBox")) {
+        currentBox = Number((e.target as HTMLElement).id);
         //console.log("here matches mathbox", event.target);
         if (boxMenu.visible) boxMenu.toggleMenu("hide");
       }
-      if (e.target.id=="canvas") {
+      if ((e.target as HTMLElement).id=="canvas") {
         //console.log("matches canvasmenu");
         if (canvasMenu.visible) canvasMenu.toggleMenu("hide");
       }
     }
   });
 
-  addEventListener("wheel", (event) => {
+  addEventListener("wheel", (event: WheelEvent) => {
     let sign = 1;
         
     let mx = event.clientX-0.5*window.innerWidth;
@@ -167,35 +172,27 @@ addEventListener("load", (event) => {
   });
 
   document.getElementById("canvas").addEventListener("contextmenu", e => {
+    let eventTarget = e.target as HTMLElement;
     e.preventDefault();
-    console.log(e.target);
-    if (e.target.id=="canvas") {
+    if (eventTarget.id=="canvas") {
         if (!e.ctrlKey) {
-        const origin = {
-        left: e.pageX,
-        top: e.pageY
-        };
-        canvasMenu.setPosition(origin);
+        canvasMenu.setPosition(e.pageX,e.pageY);
         return false;
         }
     }
-    if (e.target.matches("math-field")) {
-        currentBox = e.target.parentNode.id;
+    if (eventTarget.matches("math-field")) {
+        currentBox = Number((eventTarget.parentNode as HTMLElement).id);
         if (!e.ctrlKey) {
                 if (boxMenu.visible) boxMenu.toggleMenu("show");
-          const origin = {
-          left: e.pageX,
-          top: e.pageY
-          };
-          boxMenu.setPosition(origin);
+          boxMenu.setPosition(e.pageX,e.pageY);
         }
     }
 
   });
 
-  document.getElementById("canvas").addEventListener("mousedown", e => {
-    if (e.target.matches("math-field") & e.ctrlKey) {
-      console.log("math");
+  document.getElementById("canvas").addEventListener("mousedown", (e: MouseEvent) => {
+    if ((e.target as HTMLElement).matches("math-field") && e.ctrlKey) {
+      boxMap.get((e.target as HTMLElement).id).moves = false;
       dragMouseDown(e);
     }
     else {
@@ -203,17 +200,14 @@ addEventListener("load", (event) => {
     }
   });
 
-  document.addEventListener('beforeinput',(e)=>{
-    if (e.inputType === 'insertLineBreak'){
-      colorVariable();
-    }
+ 
+  let pos1 = 0;
+  let pos2 = 0;
+  let mouseX = 0;
+  let mouseY = 0;
 
-  });
-
-
-  
-  function dragViewPort(e) {
-    e = (e || window.event);
+  function dragViewPort(e: MouseEvent) {
+    //e = (e || window.event);
     // get the mouse cursor position at startup:
     mouseX = e.clientX;
     mouseY = e.clientY;
@@ -222,10 +216,11 @@ addEventListener("load", (event) => {
     document.onmousemove = viewPortDrag;
   }
 
-  function viewPortDrag(e) {
+  function viewPortDrag(e: MouseEvent) {
     console.log("dragging", globalX);
-    e = e || window.event;
+    //e = e || window.event;
     e.preventDefault();
+
     // calculate the new cursor position:
     pos1 = mouseX - e.clientX;
     pos2 = mouseY - e.clientY;
@@ -236,16 +231,16 @@ addEventListener("load", (event) => {
 
   }
 
-  function closeDragViewPort(e) {
+  function closeDragViewPort(e: MouseEvent) {
     document.onmouseup = null;
     document.onmousemove = null;
-    currentBoxDrag = 0;
+    currentBoxDrag = null;
   }
 
-  function dragMouseDown(e) {
-    currentBoxDrag = boxMap.get(e.target.parentNode.id);
+  function dragMouseDown(e: MouseEvent) {
+    currentBoxDrag = boxMap.get((((e.target as HTMLElement).parentNode as HTMLElement).id));
     e.preventDefault();
-    e = (e || window.event);
+    //e = (e || window.event);
     if (e.ctrlKey) {
       // get the mouse cursor position at startup:
       mouseX = e.clientX;
@@ -260,48 +255,57 @@ addEventListener("load", (event) => {
     // stop moving when mouse button is released:
     document.onmouseup = null;
     document.onmousemove = null;
-    currentBoxDrag = 0;
+    currentBoxDrag.moves = true;
+    currentBoxDrag = null;
   }
 
 
-  function elementDrag(e) {
-    e = e || window.event;
+  function elementDrag(e: MouseEvent) {
+    //e = e || window.event;
     e.preventDefault();
-    // calculate the new cursor position:
+    // calculate the new cursor position:b
     pos1 = mouseX - e.clientX;
     pos2 = mouseY - e.clientY;
     mouseX = e.clientX;
     mouseY = e.clientY;
-    //console.log(currentBoxDrag.boxElement.offsetLeft - pos1,currentBoxDrag.boxElement.offsetTop - pos2);
-    currentBoxDrag.move(-pos1/globalScale,-pos2/globalScale);
+    if (currentBoxDrag!=null) {
+
+      currentBoxDrag.move(-pos1/globalScale,-pos2/globalScale);
+    }
   }
   console.log("page loaded");
-
 });
 
 
+function scrollMathDivs() {
+  for (const key of boxMap.keys()) {
+    let box = boxMap.get(key);
+    box.scale(globalScale);
+  }
+}
 
-function addMathBox(text="f(x)=") {
+function toggleMovement() {
+  boxMap.get(String(currentBox)).moves = !boxMap.get(String(currentBox)).moves;
+}
+
+function addMathBox() {
   nodeCount += 1;
-  boxMap.set(String(nodeCount),new InputBox(nodeCount,defaultText=text));
+  boxMap.set(String(nodeCount),new InputBox(String(nodeCount)));
   canvasMenu.toggleMenu("hide");
 }
 
 function deleteMathBox() {
-  boxMap.get(currentBox).remove();
-  boxMap.delete(currentBox);
+  boxMap.get(String(currentBox)).remove();
+  boxMap.delete(String(currentBox));
   boxMenu.toggleMenu("hide");
 }
 
 
-function toggleMovement() {
-  boxMap.get(currentBox).moves = !boxMap.get(currentBox).moves;
-}
-function computeBoxMotion(deltaTime) {
+function computeBoxMotion(deltaTime: number) {
   for (const key1 of boxMap.keys()) {
     boxMap.get(key1).updatePagePosition();
     for (const key2 of boxMap.keys()) {
-      if ((key1!==key2) & (key1!=currentBoxDrag.id) & (boxMap.get(key1).moves===true) & (boxMap.get(key2).moves===true)) {
+      if ((key1!==key2) && (boxMap.get(key1).moves===true) && (boxMap.get(key2).moves===true)) {
         let a = boxMap.get(key1);
         let b = boxMap.get(key2);
         
@@ -323,9 +327,13 @@ function computeBoxMotion(deltaTime) {
   }
 }
 
+
+
 window.requestAnimationFrame(gameLoop);
-var oldTimeStamp;
-function gameLoop(timeStamp) {
+var oldTimeStamp: number;
+var secondsPassed: number;
+
+function gameLoop(timeStamp: number) {
   secondsPassed = (timeStamp - oldTimeStamp) / 1000;
   oldTimeStamp = timeStamp;
   computeBoxMotion(secondsPassed);
