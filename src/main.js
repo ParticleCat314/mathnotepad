@@ -293,29 +293,7 @@ function deleteMathBox() {
   boxMenu.toggleMenu("hide");
 }
 
-function createDerivative() {
-  let expr = MathfieldElement.computeEngine.parse(boxMap.get(currentBox).boxElement.childNodes[0].getValue()).toLatex({invisibleMultiply: "*"});
-  console.log("Expr: ",expr);
-  let parsedExpr = expr;//expr.replaceAll("{","(").replaceAll("}",")");
-  console.log("parsedExpr: ",parsedExpr);
-  let result = nerdamer.diff(nerdamer.convertFromLaTeX(parsedExpr),"x").toTeX();
-  console.log("Diff: ",result);
-  //result = MathfieldElement.computeEngine.parse(result).toLatex();
-  result = result.replace(/\mathrm{([A-z]+)}/gm,"$1");
-  console.log("Diff latex: ",result);
-  addMathBox(text=result);
 
-}
-
-function createIntegral() {
-  let expr = MathfieldElement.computeEngine.parse(boxMap.get(currentBox).boxElement.childNodes[0].getValue()).toLatex({invisibleMultiply: "*"});
-  console.log("Expr: ",expr);
-  let parsedExpr = expr;//expr.replaceAll("{","(").replaceAll("}",")");
-  console.log("parsedExpr: ",parsedExpr);
-  let result = nerdamer.integrate(nerdamer.convertFromLaTeX(parsedExpr),"x").toTeX();
-  result = result.replace(/\mathrm{([A-z]+)}/gm,"$1");
-  addMathBox(text=result);
-}
 function toggleMovement() {
   boxMap.get(currentBox).moves = !boxMap.get(currentBox).moves;
 }
@@ -345,18 +323,6 @@ function computeBoxMotion(deltaTime) {
   }
 }
 
-function drawGraphEdge(sx,sy, ex,ey) {
-  let edge = document.getElementById("canvasSVG");
-  
-  let child = document.createElementNS('http://www.w3.org/2000/svg', 'line');;
-  child.setAttribute("x1",sx);
-  child.setAttribute("y1",sy);
-  child.setAttribute("x2",ex);
-  child.setAttribute("y2",ey);
-  child.style = "stroke:red;stroke-width:12";
-  edge.appendChild(child);
-}
-
 window.requestAnimationFrame(gameLoop);
 var oldTimeStamp;
 function gameLoop(timeStamp) {
@@ -364,13 +330,6 @@ function gameLoop(timeStamp) {
   oldTimeStamp = timeStamp;
   computeBoxMotion(secondsPassed);
   window.requestAnimationFrame(gameLoop);
-}
-
-
-function colorVariable() {
-  let variables = ["x"];
-  let colored = [];
-
 }
 
 
