@@ -77,7 +77,6 @@ class SelectionMenu {
         });
     }
     addMenuOption(text, action) {
-        //(this.menuOption as HTMLElement).innerHTML += "<li class='menu-option'>"+text+"</li>";
         let option = document.createElement("li");
         option.className = "menu-option";
         option.innerHTML = text;
@@ -165,13 +164,11 @@ addEventListener("load", (event) => {
         mouseX = e.clientX;
         mouseY = e.clientY;
         document.onmouseup = closeDragViewPort;
-        // call a function whenever the cursor moves:
         document.onmousemove = viewPortDrag;
     }
     function viewPortDrag(e) {
         console.log("dragging", globalX);
         e.preventDefault();
-        // calculate the new cursor position:
         pos1 = mouseX - e.clientX;
         pos2 = mouseY - e.clientY;
         mouseX = e.clientX;
@@ -189,16 +186,13 @@ addEventListener("load", (event) => {
         currentBoxDrag.moving = true;
         e.preventDefault();
         if (e.ctrlKey) {
-            // get the mouse cursor position at startup:
             mouseX = e.clientX;
             mouseY = e.clientY;
             document.onmouseup = closeDragElement;
-            // call a function whenever the cursor moves:
             document.onmousemove = elementDrag;
         }
     }
     function closeDragElement() {
-        // stop moving when mouse button is released:
         document.onmouseup = null;
         document.onmousemove = null;
         currentBoxDrag.moving = false;
@@ -206,9 +200,7 @@ addEventListener("load", (event) => {
     }
     function elementDrag(e) {
         console.log("here");
-        //e = e || window.event;
         e.preventDefault();
-        // calculate the new cursor position:b
         pos1 = mouseX - e.clientX;
         pos2 = mouseY - e.clientY;
         mouseX = e.clientX;
@@ -265,12 +257,10 @@ function updateBoxes() {
         boxMap.get(key1).updatePagePosition();
     }
 }
-// Probably should try to find an alternativ to running it as a game loop
 function gameLoop(timeStamp) {
     secondsPassed = (timeStamp - oldTimeStamp) / 1000;
     oldTimeStamp = timeStamp;
     computeBoxMotion(secondsPassed);
-    //updateBoxes();
     window.requestAnimationFrame(gameLoop);
 }
 //# sourceMappingURL=main.js.map
