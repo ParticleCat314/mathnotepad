@@ -28,6 +28,7 @@ class InputBox {
   id: string;
   boxElement: HTMLElement;
   moves: boolean;
+  moving: boolean;
   x: number;
   y: number;
   
@@ -42,6 +43,7 @@ class InputBox {
     this.boxElement.style.scale = String(globalScale);
     this.boxElement.setAttribute("oncontextmenu","return false;");
     this.moves = true;
+    this.moving = false;
     document.body.appendChild(this.boxElement);
     let mf = document.getElementById("mathformula"+id);
     mf.menuItems = [];
@@ -141,11 +143,9 @@ addEventListener("load", (event) => {
     if (!e.ctrlKey) {
       if ((e.target as HTMLElement).matches("mathBox")) {
         currentBox = Number((e.target as HTMLElement).id);
-        //console.log("here matches mathbox", event.target);
         if (boxMenu.visible) boxMenu.toggleMenu("hide");
       }
       if ((e.target as HTMLElement).id=="canvas") {
-        //console.log("matches canvasmenu");
         if (canvasMenu.visible) canvasMenu.toggleMenu("hide");
       }
     }
@@ -192,7 +192,6 @@ addEventListener("load", (event) => {
 
   document.getElementById("canvas").addEventListener("mousedown", (e: MouseEvent) => {
     if ((e.target as HTMLElement).matches("math-field") && e.ctrlKey) {
-      boxMap.get((e.target as HTMLElement).id).moves = false;
       dragMouseDown(e);
     }
     else {
@@ -207,8 +206,6 @@ addEventListener("load", (event) => {
   let mouseY = 0;
 
   function dragViewPort(e: MouseEvent) {
-    //e = (e || window.event);
-    // get the mouse cursor position at startup:
     mouseX = e.clientX;
     mouseY = e.clientY;
     document.onmouseup = closeDragViewPort;
@@ -218,7 +215,6 @@ addEventListener("load", (event) => {
 
   function viewPortDrag(e: MouseEvent) {
     console.log("dragging", globalX);
-    //e = e || window.event;
     e.preventDefault();
 
     // calculate the new cursor position:
@@ -239,8 +235,8 @@ addEventListener("load", (event) => {
 
   function dragMouseDown(e: MouseEvent) {
     currentBoxDrag = boxMap.get((((e.target as HTMLElement).parentNode as HTMLElement).id));
+    currentBoxDrag.moving = true;
     e.preventDefault();
-    //e = (e || window.event);
     if (e.ctrlKey) {
       // get the mouse cursor position at startup:
       mouseX = e.clientX;
@@ -255,12 +251,13 @@ addEventListener("load", (event) => {
     // stop moving when mouse button is released:
     document.onmouseup = null;
     document.onmousemove = null;
-    currentBoxDrag.moves = true;
+    currentBoxDrag.moving = false;
     currentBoxDrag = null;
   }
 
 
   function elementDrag(e: MouseEvent) {
+    console.log("here");
     //e = e || window.event;
     e.preventDefault();
     // calculate the new cursor position:b
@@ -268,10 +265,7 @@ addEventListener("load", (event) => {
     pos2 = mouseY - e.clientY;
     mouseX = e.clientX;
     mouseY = e.clientY;
-    if (currentBoxDrag!=null) {
-
-      currentBoxDrag.move(-pos1/globalScale,-pos2/globalScale);
-    }
+    currentBoxDrag.move(-pos1/globalScale,-pos2/globalScale);
   }
   console.log("page loaded");
 });
@@ -305,7 +299,7 @@ function computeBoxMotion(deltaTime: number) {
   for (const key1 of boxMap.keys()) {
     boxMap.get(key1).updatePagePosition();
     for (const key2 of boxMap.keys()) {
-      if ((key1!==key2) && (boxMap.get(key1).moves===true) && (boxMap.get(key2).moves===true)) {
+      if ((key1!==key2) && (boxMap.get(key1).moves===true) && (boxMap.get(key2).moves===true) && (boxMap.get(key1).moving===false)) {
         let a = boxMap.get(key1);
         let b = boxMap.get(key2);
         
@@ -333,10 +327,18 @@ window.requestAnimationFrame(gameLoop);
 var oldTimeStamp: number;
 var secondsPassed: number;
 
+function updateBoxes() {
+ for (const key1 of boxMap.keys()) {
+    boxMap.get(key1).updatePagePosition();
+  }
+}
+
+// Probably should try to find an alternativ to running it as a game loop
 function gameLoop(timeStamp: number) {
   secondsPassed = (timeStamp - oldTimeStamp) / 1000;
   oldTimeStamp = timeStamp;
   computeBoxMotion(secondsPassed);
+  //updateBoxes();
   window.requestAnimationFrame(gameLoop);
 }
 
