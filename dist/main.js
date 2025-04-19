@@ -252,7 +252,6 @@ function computeBoxMotion(deltaTime) {
         }
     }
 }
-window.requestAnimationFrame(gameLoop);
 var oldTimeStamp;
 var secondsPassed;
 var fps = document.getElementById("fps");
@@ -263,4 +262,5 @@ function gameLoop(timeStamp) {
     fps.textContent = String(1 / secondsPassed);
     window.requestAnimationFrame(gameLoop);
 }
+window.requestAnimationFrame(gameLoop);
 //# sourceMappingURL=main.js.map

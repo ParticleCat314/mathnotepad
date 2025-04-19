@@ -89,8 +89,6 @@ function computeBoxMotion(deltaTime: number) {
 }
 
 
-
-window.requestAnimationFrame(gameLoop);
 var oldTimeStamp: number;
 var secondsPassed: number;
 var fps = document.getElementById("fps");
@@ -104,4 +102,6 @@ function gameLoop(timeStamp: number) {
   fps.textContent = String(1/secondsPassed);
   window.requestAnimationFrame(gameLoop);
 }
+
+window.requestAnimationFrame(gameLoop);
 
