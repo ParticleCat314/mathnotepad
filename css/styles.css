@@ -19,6 +19,7 @@ body, html {
   width: fit-content;
   overflow: auto;
   border-radius: 5px;
+  transform-origin: left top;
 }
 
 .optionsContainer {
@@ -32,10 +33,7 @@ body, html {
 
 svg { position:absolute; width: 100%; height: 100%; pointer-events: none;}
 
-.math-field {
-  height: 100%;
-  display: block;
-}
+
 
 @media not (pointer: coarse) {
   math-field::part(virtual-keyboard-toggle) {
@@ -49,12 +47,13 @@ svg { position:absolute; width: 100%; height: 100%; pointer-events: none;}
     color: white;
     display: block;
     width: 100%;
-    --smart-fence-opacity: 0;
+    smart-fence-opacity: 0;
     font-size: 30px;
     background: rgba(0,0,0, .0);
-    --contains-highlight-background-color: 0;
+    contains-highlight-background-color: 0;
     border-radius: 5px;
     border: none;
+    transform-origin: left top;
   }
   math-field:focus-within {
     outline: 0px solid #d7170b;
@@ -71,7 +70,7 @@ svg { position:absolute; width: 100%; height: 100%; pointer-events: none;}
   box-shadow: 0 4px 5px 3px rgba(0, 0, 0, 0.2);
   position: fixed;
   display: none;
-  //transition: 0.2s display ease-in;
+  transition: 0.2s display ease-in;
   animation: menuAnimation 0.2s 0s both;
   background: rgba(180,180,180,1.0);
   .menu-options {
@@ -84,7 +83,7 @@ svg { position:absolute; width: 100%; height: 100%; pointer-events: none;}
       z-index: 1;
       font-size: 14px;
       padding: 10px 10px 10px 10px;
-      // border-bottom: 1.5px solid rgba(0, 0, 0, 0.2);
+      border-bottom: 1.5px solid rgba(0, 0, 0, 0.2);
       cursor: pointer;
 
       &:hover {

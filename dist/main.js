@@ -1,75 +1,10 @@
-var nodeCount = 0;
-var currentBox = 0;
-var boxMap = new Map;
-var boxMenu = null;
-var canvasMenu = null;
-var mouseX = 0;
-var mouseY = 0;
-var currentBoxDrag = null;
-var globalScale = 1.0;
-var globalX = 0;
-var globalY = 0;
-function worldToScreenX(x) {
-    return globalScale * (x) + window.innerWidth * 0.5 + globalX;
-}
-function worldToScreenY(y) {
-    return globalScale * (y) + window.innerHeight * 0.5 + globalY;
-}
-function screenToWorldX(x) {
-    return (x - window.innerWidth * 0.5 - globalX) / globalScale;
-}
-function screenToWorldY(y) {
-    return (y - window.innerWidth * 0.5 - globalY) / globalScale;
-}
-class InputBox {
-    constructor(id) {
-        let defaultText = "f(x)=";
-        this.id = id;
-        this.boxElement = document.createElement("div");
-        this.boxElement.id = id;
-        this.boxElement.className = "mathBox";
-        this.boxElement.innerHTML = "<math-field math-virtual-keyboard-policy='manual' id='" + "mathformula" + this.id + "' oncontextmenu='return false;'>" + defaultText + "</math-field>";
-        this.boxElement.style.scale = String(globalScale);
-        this.boxElement.setAttribute("oncontextmenu", "return false;");
-        this.moves = true;
-        this.moving = false;
-        document.body.appendChild(this.boxElement);
-        let mf = document.getElementById("mathformula" + id);
-        mf.menuItems = [];
-        this.x = window.event.clientX - 0.5 * window.innerWidth / globalScale;
-        this.y = window.event.clientY - 0.5 * window.innerHeight / globalScale;
-        this.boxElement.style.left = worldToScreenX(this.x) + "px";
-        this.boxElement.style.top = worldToScreenY(this.y) + "px";
-    }
-    updatePagePosition() {
-        this.boxElement.style.left = worldToScreenX(this.x) + "px";
-        this.boxElement.style.top = worldToScreenY(this.y) + "px";
-    }
-    getPosition() {
-        return [this.x, this.y];
-    }
-    setPosition(x, y) {
-        this.x = x;
-        this.y = y;
-        this.updatePagePosition();
-    }
-    move(x, y) {
-        this.setPosition(x + this.x, y + this.y);
-    }
-    remove() {
-        this.boxElement.remove();
-    }
-    scale(s) {
-        this.boxElement.style.scale = String(s);
-    }
-}
 class SelectionMenu {
-    constructor(id, styleClass, innerHTML) {
+    constructor(id, styleClass) {
         this.visible = false;
         this.menuElement = document.createElement("div");
         this.menuElement.className = styleClass;
         this.menuElement.id = id;
-        this.menuElement.innerHTML = innerHTML;
+        this.menuElement.innerHTML = String("<ul class='menu-options'></ul></div>");
         document.body.appendChild(this.menuElement);
         this.menuOption = this.menuElement.childNodes[0];
         this.menuElement.addEventListener("mouseleave", e => {
@@ -94,149 +29,217 @@ class SelectionMenu {
         this.toggleMenu("show");
     }
 }
-addEventListener("load", (event) => {
-    canvasMenu = new SelectionMenu("canvasmenu", "menu", "<ul class='menu-options'></ul></div>");
-    canvasMenu.addMenuOption("Insert Math", addMathBox);
-    boxMenu = new SelectionMenu("boxmenu", "menu", "<ul class='menu-options'></ul></div>");
-    boxMenu.addMenuOption("Remove", deleteMathBox);
-    boxMenu.addMenuOption("Toggle movement", toggleMovement);
-    document.getElementById("canvas").addEventListener("click", e => {
-        if (!e.ctrlKey) {
-            if (e.target.matches("mathBox")) {
-                currentBox = Number(e.target.id);
-                if (boxMenu.visible)
-                    boxMenu.toggleMenu("hide");
-            }
-            if (e.target.id == "canvas") {
-                if (canvasMenu.visible)
-                    canvasMenu.toggleMenu("hide");
-            }
+function worldToScreenX(x, globalX, globalScale) {
+    return globalScale * (x) + window.innerWidth * 0.5 + globalX;
+}
+function worldToScreenY(y, globalY, globalScale) {
+    return globalScale * (y) + window.innerHeight * 0.5 + globalY;
+}
+class InputBox {
+    constructor(id, globalScale = 1) {
+        let defaultText = "f(x)=";
+        this.domID = id;
+        this.boxElement = document.createElement("div");
+        this.boxElement.id = id;
+        this.boxElement.className = "mathBox";
+        this.boxElement.innerHTML = "<math-field math-virtual-keyboard-policy='manual' id='" + "mathformula" + this.domID + "' oncontextmenu='return false;'>" + defaultText + "</math-field>";
+        this.boxElement.style.scale = String(globalScale);
+        this.boxElement.style.transformOrigin = "left top";
+        this.boxElement.setAttribute("oncontextmenu", "return false;");
+        this.isMoveable = true;
+        this.moving = false;
+        document.body.appendChild(this.boxElement);
+        let mf = document.getElementById("mathformula" + id);
+        mf.menuItems = [];
+        this.positionX = window.event.clientX - 0.5 * window.innerWidth / globalScale;
+        this.positionY = window.event.clientY - 0.5 * window.innerHeight / globalScale;
+        this.boxElement.style.left = worldToScreenX(this.positionX, 0, 1) + "px";
+        this.boxElement.style.top = worldToScreenY(this.positionY, 0, 1) + "px";
+    }
+    update(offsetX, offsetY, scale) {
+        this.boxElement.style.left = worldToScreenX(this.positionX, offsetX, scale) + "px";
+        this.boxElement.style.top = worldToScreenY(this.positionY, offsetY, scale) + "px";
+    }
+    getPosition() {
+        return [this.positionX, this.positionY];
+    }
+    setPosition(x, y) {
+        this.positionX = x;
+        this.positionY = y;
+    }
+    move(x, y) {
+        this.setPosition(x + this.positionX, y + this.positionY);
+    }
+    remove() {
+        this.boxElement.remove();
+    }
+    scale(s) {
+        this.boxElement.style.scale = String(s);
+    }
+    toggleMovement() {
+        this.isMoveable = !this.isMoveable;
+    }
+}
+class infiniteCanvas {
+    constructor() {
+        this.offsetX = 0;
+        this.offsetY = 0;
+        this.scale = 1;
+        this.items = new Map;
+        this.itemCount = 0;
+        this.mouseX = 0;
+        this.mouseY = 0;
+        this.currentSelection = null;
+    }
+    insertItem(newItem) {
+        this.items.set(newItem.domID, newItem);
+        newItem.update(this.offsetX, this.offsetY, this.scale);
+        newItem.scale(this.scale);
+    }
+    insertItemInputBox() {
+        this.itemCount += 1;
+        this.insertItem(new InputBox(String(this.itemCount)));
+    }
+    removeItem(itemID) {
+        this.items.get(itemID).remove();
+        this.items.delete(itemID);
+    }
+    updateCanvas() {
+        for (const [key, value] of this.items) {
+            value.update(this.offsetX, this.offsetY, this.scale);
         }
-    });
-    addEventListener("wheel", (event) => {
+    }
+    scaleItems() {
+        for (const [key, value] of this.items) {
+            value.scale(this.scale);
+        }
+    }
+    zoom(event) {
         let sign = 1;
         let mx = event.clientX - 0.5 * window.innerWidth;
         let my = event.clientY - 0.5 * window.innerHeight;
         if (event.deltaY < 0) {
-            globalScale *= 1.2;
-            globalX += (globalX - mx) * 1.2 - (globalX - mx);
-            globalY += (globalY - my) * 1.2 - (globalY - my);
+            this.scale *= 1.2;
+            this.offsetX += (this.offsetX - mx) * 1.2 - (this.offsetX - mx);
+            this.offsetY += (this.offsetY - my) * 1.2 - (this.offsetY - my);
         }
         if (event.deltaY > 0) {
             sign = -1;
-            globalScale /= 1.2;
-            globalX += (globalX - mx) * 1 / 1.2 - (globalX - mx);
-            globalY += (globalY - my) * 1 / 1.2 - (globalY - my);
+            this.scale /= 1.2;
+            this.offsetX += (this.offsetX - mx) * 1 / 1.2 - (this.offsetX - mx);
+            this.offsetY += (this.offsetY - my) * 1 / 1.2 - (this.offsetY - my);
         }
-        scrollMathDivs();
-    });
-    document.getElementById("canvas").addEventListener("contextmenu", e => {
-        let eventTarget = e.target;
-        e.preventDefault();
-        if (eventTarget.id == "canvas") {
-            if (!e.ctrlKey) {
-                canvasMenu.setPosition(e.pageX, e.pageY);
-                return false;
-            }
-        }
-        if (eventTarget.matches("math-field")) {
-            currentBox = Number(eventTarget.parentNode.id);
-            if (!e.ctrlKey) {
-                if (boxMenu.visible)
-                    boxMenu.toggleMenu("show");
-                boxMenu.setPosition(e.pageX, e.pageY);
-            }
-        }
-    });
-    document.getElementById("canvas").addEventListener("mousedown", (e) => {
-        if (e.target.matches("math-field") && e.ctrlKey) {
-            dragMouseDown(e);
-        }
-        else {
-            dragViewPort(e);
-        }
-    });
-    let pos1 = 0;
-    let pos2 = 0;
-    let mouseX = 0;
-    let mouseY = 0;
-    function dragViewPort(e) {
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-        document.onmouseup = closeDragViewPort;
-        document.onmousemove = viewPortDrag;
+        this.scaleItems();
     }
-    function viewPortDrag(e) {
-        console.log("dragging", globalX);
-        e.preventDefault();
-        pos1 = mouseX - e.clientX;
-        pos2 = mouseY - e.clientY;
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-        globalX -= pos1;
-        globalY -= pos2;
+    startPan(event) {
+        this.mouseX = event.clientX;
+        this.mouseY = event.clientY;
+        document.onmouseup = (event) => { this.closePan(this, event); };
+        document.onmousemove = (event) => { this.pan(this, event); };
     }
-    function closeDragViewPort(e) {
+    pan(caller, event) {
+        event.preventDefault();
+        let pos1 = this.mouseX - event.clientX;
+        let pos2 = this.mouseY - event.clientY;
+        this.mouseX = event.clientX;
+        this.mouseY = event.clientY;
+        this.offsetX -= pos1;
+        this.offsetY -= pos2;
+        console.log(this);
+    }
+    closePan(caller, event) {
         document.onmouseup = null;
         document.onmousemove = null;
-        currentBoxDrag = null;
     }
-    function dragMouseDown(e) {
-        currentBoxDrag = boxMap.get((e.target.parentNode.id));
-        currentBoxDrag.moving = true;
-        e.preventDefault();
-        if (e.ctrlKey) {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-            document.onmouseup = closeDragElement;
-            document.onmousemove = elementDrag;
+    selectItem(itemID) {
+        this.currentSelection = this.items.get(itemID);
+    }
+    selectNone() {
+        this.currentSelection = null;
+    }
+    startDragItem(event) {
+        this.selectItem(event.target.parentNode.id);
+        event.preventDefault();
+        if (event.ctrlKey) {
+            this.mouseX = event.clientX;
+            this.mouseY = event.clientY;
+            document.onmouseup = (event) => { this.closeDragItem(event); };
+            document.onmousemove = (event) => { this.dragItem(event); };
         }
     }
-    function closeDragElement() {
+    dragItem(event) {
+        event.preventDefault();
+        let pos1 = this.mouseX - event.clientX;
+        let pos2 = this.mouseY - event.clientY;
+        this.mouseX = event.clientX;
+        this.mouseY = event.clientY;
+        this.currentSelection.move(-pos1 / this.scale, -pos2 / this.scale);
+    }
+    closeDragItem(event) {
         document.onmouseup = null;
         document.onmousemove = null;
-        currentBoxDrag.moving = false;
-        currentBoxDrag = null;
+        this.selectNone();
     }
-    function elementDrag(e) {
-        console.log("here");
-        e.preventDefault();
-        pos1 = mouseX - e.clientX;
-        pos2 = mouseY - e.clientY;
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-        currentBoxDrag.move(-pos1 / globalScale, -pos2 / globalScale);
-    }
-    console.log("page loaded");
+}
+var boxMenu = null;
+var canvasMenu = null;
+let c = new infiniteCanvas();
+addEventListener("wheel", (event) => {
+    c.zoom(event);
 });
-function scrollMathDivs() {
-    for (const key of boxMap.keys()) {
-        let box = boxMap.get(key);
-        box.scale(globalScale);
+document.getElementById("canvas").addEventListener("click", e => {
+    if (!e.ctrlKey) {
+        if (e.target.matches("mathBox")) {
+            c.selectItem(e.target.id);
+            if (boxMenu.visible)
+                boxMenu.toggleMenu("hide");
+        }
+        if (e.target.id == "canvas") {
+            if (canvasMenu.visible)
+                canvasMenu.toggleMenu("hide");
+        }
     }
-}
-function toggleMovement() {
-    boxMap.get(String(currentBox)).moves = !boxMap.get(String(currentBox)).moves;
-}
-function addMathBox() {
-    nodeCount += 1;
-    boxMap.set(String(nodeCount), new InputBox(String(nodeCount)));
-    canvasMenu.toggleMenu("hide");
-}
-function deleteMathBox() {
-    boxMap.get(String(currentBox)).remove();
-    boxMap.delete(String(currentBox));
-    boxMenu.toggleMenu("hide");
-}
+});
+document.getElementById("canvas").addEventListener("contextmenu", e => {
+    let eventTarget = e.target;
+    e.preventDefault();
+    if (eventTarget.id == "canvas") {
+        if (!e.ctrlKey) {
+            canvasMenu.setPosition(e.pageX, e.pageY);
+            return false;
+        }
+    }
+    if (eventTarget.matches("math-field")) {
+        c.selectItem(eventTarget.parentNode.id);
+        if (!e.ctrlKey) {
+            if (boxMenu.visible)
+                boxMenu.toggleMenu("show");
+            boxMenu.setPosition(e.pageX, e.pageY);
+        }
+    }
+});
+canvasMenu = new SelectionMenu("canvasmenu", "menu");
+canvasMenu.addMenuOption("Insert Math", () => { c.insertItemInputBox(); });
+boxMenu = new SelectionMenu("boxmenu", "menu");
+boxMenu.addMenuOption("Remove", () => { c.removeItem(c.currentSelection.domID); });
+boxMenu.addMenuOption("Toggle movement", () => { c.currentSelection.toggleMovement(); });
+document.getElementById("canvas").addEventListener("mousedown", (e) => {
+    if (e.target.matches("math-field") && e.ctrlKey) {
+        c.startDragItem(e);
+    }
+    else {
+        c.startPan(e);
+    }
+});
 function computeBoxMotion(deltaTime) {
-    for (const key1 of boxMap.keys()) {
-        boxMap.get(key1).updatePagePosition();
-        for (const key2 of boxMap.keys()) {
-            if ((key1 !== key2) && (boxMap.get(key1).moves === true) && (boxMap.get(key2).moves === true) && (boxMap.get(key1).moving === false)) {
-                let a = boxMap.get(key1);
-                let b = boxMap.get(key2);
-                let rx = a.x - b.x;
-                let ry = a.y - b.y;
+    for (const key1 of c.items.keys()) {
+        c.updateCanvas();
+        for (const key2 of c.items.keys()) {
+            if ((key1 !== key2) && (c.items.get(key1).isMoveable === true) && (c.items.get(key2).isMoveable === true) && c.currentSelection !== c.items.get(key1)) {
+                let a = c.items.get(key1);
+                let b = c.items.get(key2);
+                let rx = a.positionX - b.positionX;
+                let ry = a.positionY - b.positionY;
                 let dist = Math.sqrt(rx * rx + ry * ry);
                 if (dist < 500) {
                     let rxN = rx / dist;
@@ -252,15 +255,12 @@ function computeBoxMotion(deltaTime) {
 window.requestAnimationFrame(gameLoop);
 var oldTimeStamp;
 var secondsPassed;
-function updateBoxes() {
-    for (const key1 of boxMap.keys()) {
-        boxMap.get(key1).updatePagePosition();
-    }
-}
+var fps = document.getElementById("fps");
 function gameLoop(timeStamp) {
     secondsPassed = (timeStamp - oldTimeStamp) / 1000;
     oldTimeStamp = timeStamp;
     computeBoxMotion(secondsPassed);
+    fps.textContent = String(1 / secondsPassed);
     window.requestAnimationFrame(gameLoop);
 }
 //# sourceMappingURL=main.js.map

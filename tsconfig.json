@@ -1,14 +1,17 @@
 {
   "compilerOptions": {
     "target": "es6",
-    "module": "commonjs",
     "noImplicitAny": true,
     "removeComments": true,
     "preserveConstEnums": true,
     "sourceMap": true,
-    "outDir": "dist/"
+    "outDir": "dist/",
+    "outFile": "dist/main.js"
   },
   "files": [
+    "src/ui.ts",
+    "src/mathbox.ts",
+    "src/infiniteCanvas.ts",
     "src/main.ts"
   ]
 }
