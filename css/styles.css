@@ -20,7 +20,6 @@ body, html {
   overflow: auto;
   border-radius: 5px;
   transform-origin: left top;
-  --contains-highlight-background-color: none;
 }
 
 .optionsContainer {
