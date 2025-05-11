@@ -24,7 +24,6 @@ class InputBox {
     this.boxElement.innerHTML = "<math-field math-virtual-keyboard-policy='manual' id='" + "mathformula" + this.domID + "' oncontextmenu='return false;'>" + defaultText + "</math-field>";
     this.boxElement.style.scale = String(globalScale);
     this.boxElement.style.transformOrigin = "left top";
-    this.boxElement.style.setProperty("--contains-highlight-background-color", "false")
     this.boxElement.setAttribute("oncontextmenu", "return false;");
     this.isMoveable = true;
     this.moving = false;
