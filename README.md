@@ -1,6 +1,6 @@
 # mathnotepad
 
-A very simple website for writing math expressions on an infinite canvas. Made quickly as a personal tool. Uses Mathlive.
+A very simple website for writing and rendering LaTeX math expressions (via MathLive) on an infinite canvas. Made quickly (it shows) as a personal tool so I have somewhere to chuck random equations. Might add more stuff if I feel like it.
 
 ## Controls
 
